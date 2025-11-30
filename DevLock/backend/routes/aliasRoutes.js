@@ -5,14 +5,13 @@ import {
   deleteAlias,
   getAliasStats,
 } from "../controllers/aliasController.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/create", authMiddleware, createAlias);
-router.get("/", authMiddleware, getAliases);
-router.get("/stats", authMiddleware, getAliasStats);
-router.delete("/:id", authMiddleware, deleteAlias);
+router.post("/create", createAlias);
+router.get("/", getAliases);
+router.get("/stats", getAliasStats);
+router.delete("/:id", deleteAlias);
 
 export default router;
 

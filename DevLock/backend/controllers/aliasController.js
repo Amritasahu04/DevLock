@@ -1,27 +1,40 @@
 import Alias from "../models/Alias.js";
+import User from "../models/User.js";
 import generateAlias from "../utils/generateAlias.js";
 import { getAliasMeta } from "../utils/aliasHelpers.js";
 
 export const createAlias = async (req, res) => {
   try {
+    const { userId, type, expiryDuration: clientExpiryDuration } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Verify user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
     const now = Date.now();
 
     // expiryDuration is provided by the client in milliseconds (e.g. 1h, 6h, 24h, 7d)
     const expiryDuration =
-      typeof req.body.expiryDuration === "number" && req.body.expiryDuration > 0
-        ? req.body.expiryDuration
+      typeof clientExpiryDuration === "number" && clientExpiryDuration > 0
+        ? clientExpiryDuration
         : 3600000; // fallback to 1 hour if not provided
 
     const expiresAt = new Date(now + expiryDuration);
 
     const alias = await Alias.create({
-      alias: generateAlias(req.user.userId),
-      userId: req.user.userId,
-      type: req.body.type,
+      alias: generateAlias(userId),
+      userId: userId,
+      type: type || "email",
       createdAt: new Date(now),
       expiresAt,
       expiryDuration,
-      isPremium: req.user?.isPremium ?? false,
+      isPremium: user?.isPremium ?? false,
     });
 
     const meta = getAliasMeta(alias);
@@ -34,7 +47,13 @@ export const createAlias = async (req, res) => {
 
 export const getAliases = async (req, res) => {
   try {
-    const aliases = await Alias.find({ userId: req.user.userId });
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const aliases = await Alias.find({ userId });
 
     const enrichedAliases = aliases.map((alias) => {
       const meta = getAliasMeta(alias);
@@ -50,11 +69,16 @@ export const getAliases = async (req, res) => {
 export const deleteAlias = async (req, res) => {
   try {
     const { id } = req.params;
+    const { userId } = req.query;
 
-    // Only delete aliases that belong to the currently authenticated user
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Only delete aliases that belong to the user
     const alias = await Alias.findOneAndDelete({
       _id: id,
-      userId: req.user.userId,
+      userId: userId,
     });
 
     if (!alias) {
@@ -71,7 +95,13 @@ export const deleteAlias = async (req, res) => {
 
 export const getAliasStats = async (req, res) => {
   try {
-    const aliases = await Alias.find({ userId: req.user.userId });
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const aliases = await Alias.find({ userId });
 
     const metas = aliases.map((alias) => getAliasMeta(alias));
 

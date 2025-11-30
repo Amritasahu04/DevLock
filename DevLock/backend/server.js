@@ -19,7 +19,7 @@ const bootstrap = async () => {
   app.use(express.json());
   app.use(
     cors({
-      origin: process.env.CLIENT_URL || "*",
+      origin: process.env.CLIENT_URL || "*", // Allow all origins in production, or set specific frontend URL
       credentials: true,
     })
   );
@@ -47,17 +47,20 @@ const bootstrap = async () => {
     });
   });
 
-  // 5. Routes (auth -> alias -> otp -> others)
+  // 5. Routes (init -> auth -> alias -> otp -> others)
   const [
+    { default: initRoutes },
     { default: authRoutes },
     { default: aliasRoutes },
     { default: otpRoutes },
   ] = await Promise.all([
+    import("./routes/initRoutes.js"),
     import("./routes/authRoutes.js"),
     import("./routes/aliasRoutes.js"),
     import("./routes/otpRoutes.js"),
   ]);
 
+  app.use("/api", initRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/alias", aliasRoutes);
   app.use("/api/otp", otpRoutes);
@@ -66,7 +69,7 @@ const bootstrap = async () => {
   const server = createServer(app);
   const io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "*",
+      origin: process.env.CLIENT_URL || "*", // Allow all origins in production, or set specific frontend URL
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -79,7 +82,7 @@ const bootstrap = async () => {
   await import("./cron/expiryCleanup.js");
 
   // 8. Start server
-  const PORT = process.env.PORT || 10000;
+  const PORT = process.env.PORT || 5000;
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
